@@ -170,11 +170,11 @@ class EVAgent(Agent):
 
         self.strategy = self.next_strategy
 
-    ####################################
+    # ###################################
     # Model class
-    #
+    
     # The EVStagHuntModel class implements the Mesa model for EV Stag Hunt on a network.
-    #
+    
     # Parameters
     # - initial_ev: number of initial EV nodes
     # - a0: base payoff for EV adoption
@@ -190,7 +190,7 @@ class EVAgent(Agent):
     # - collect: whether to collect agent and model-level data
     # - strategy_choice_func: strategy selection function ("imitate" or "logit")
     # - tau: temperature parameter for softmax choice (only used with "logit")
-    ####################################
+    # ###################################
 #
 class EVStagHuntModel(Model):
     """Mesa model for EV Stag Hunt on a network."""
@@ -331,10 +331,10 @@ def set_initial_adopters(model, X0_frac, method="random", seed=None, high=True):
 # -----------------------------
 # Ratio sweep helpers (computation-only)
 # -----------------------------
-#########################
-#
+# ########################
+
 # Run a single network trial
-# 
+
 # Parameters
 # - X0_frac: fraction of agents to initially choose EV adoption
 # - ratio: payoff ratio between EV and DC agents (a0 = ratio*b - beta_I*I0)
@@ -416,11 +416,11 @@ def run_network_trial(
 
     return model.get_adoption_fraction()
 
-#########################
-#
+# ########################
+
 # Compute final mean adoption fraction vs ratio
-# 
-##########################
+
+# #########################
 def final_mean_adoption_vs_ratio(
     X0_frac: float,
     ratio_values: Iterable[float],
@@ -526,11 +526,11 @@ def _row_for_ratio_task(args: Dict) -> np.ndarray:
     return row
 
     
-#########################
-#
+# ########################
+
 # Compute heatmap matrix for phase sweep
-# 
-##########################
+
+# #########################
 def phase_sweep_X0_vs_ratio(
     X0_values: Iterable[float],
     ratio_values: Iterable[float],
