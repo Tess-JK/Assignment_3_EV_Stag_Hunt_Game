@@ -15,13 +15,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 
-from Assignment3.Original_files.ev_core import (
+from ev_core import (
     EVStagHuntModel,
     set_initial_adopters,
     final_mean_adoption_vs_ratio,
     phase_sweep_X0_vs_ratio,
 )
-from Assignment3.Original_files.ev_plotting import (
+from ev_plotting import (
     plot_fanchart,
     plot_spaghetti,
     plot_density,
@@ -748,7 +748,7 @@ def main():
     max_workers = 1
     seed_base = 100
 
-    scenario = dict(
+    base_scenario = dict(
         # Preserve initial ratio by computing a0 from ratio, matching the original
         ratio=2.3,
         beta_I=2.0,
@@ -761,76 +761,92 @@ def main():
         collect=True,
         X0_frac=0.40,
         init_method="random",
-        # ER-specific `p` ignored for BA but kept for completeness
         p=0.05,
     )
     subsidy = dict(start=10, end=60, delta_a0=0.4, delta_beta_I=0.0)
 
-    baseline_df, subsidy_df, img_path = run_intervention_example(
-        n_trials=n_trials,
-        T=T,
-        scenario_kwargs=scenario,
-        subsidy_params=subsidy,
-        max_workers=max_workers,
-        seed_base=seed_base,
-        strategy_choice_func=strategy_choice_func,
-        tau=tau,
-    )
+    scenarios = [
+        ("BA", {**base_scenario, "network_type": "BA"}),
+        ("ER", {**base_scenario, "network_type": "random"}),
+        ("Grids", {**base_scenario, "network_type": "grid"})
+    ]
 
-    print("Baseline DF shape:", baseline_df.shape)
-    print("Subsidy DF shape:", subsidy_df.shape)
-    print("Saved image:", img_path)
-    print("Baseline final X_mean:", float(baseline_df["X_mean"].iloc[-1]))
-    print("Subsidy  final X_mean:", float(subsidy_df["X_mean"].iloc[-1]))
+    for label, scenario in scenarios:
+        print(f"\n=== Running scenario: {label} ===")
 
-    # Also run the phase plot of X* over (X0, a_I/b) and save it
-    phase_df = phase_sweep_df(
-        max_workers=1,
-        backend="thread",
-        X0_values=np.linspace(0.0, 1.0, 21),
-        ratio_values=np.linspace(0.8, 3.5, 31),
-        batch_size=8,
-        T=200,
-        strategy_choice_func="logit",
-        tau=1.0,
-    )
-    phase_path = plot_phase_plot(phase_df)
-    print("Saved phase plot:", phase_path)
+        #Intervention trials + fanchart
+        baseline_X, baseline_I, subsidy_X, subsidy_I, baseline_df, subsidy_df = collect_intervention_trials(
+            n_trials=n_trials,
+            T=T,
+            scenario_kwargs=scenario,
+            subsidy_params=subsidy,
+            max_workers=max_workers,
+            seed_base=seed_base,
+            strategy_choice_func=strategy_choice_func,
+            tau=tau,
+        )
 
-    # Spaghetti and time-evolving density plots
-    # Use a larger trial count for clearer trace/density visuals
-    n_trials_spaghetti = 100
-    T_spaghetti = 200
+        print("Baseline DF shape:", baseline_df.shape)
+        print("Subsidy DF shape:", subsidy_df.shape)
+        print("Baseline final X_mean:", float(baseline_df["X_mean"].iloc[-1]))
+        print("Subsidy  final X_mean:", float(subsidy_df["X_mean"].iloc[-1]))
+        fanchart_path = plot_intervention_fanchart(
+            baseline_X,
+            subsidy_X,
+            out_path=f"fanchart_{label}.png",  # <<< MODIFIED
+        )
+        print("Saved fanchart image:", fanchart_path)
 
-    baseline_X, baseline_I, subsidy_X, subsidy_I, baseline_df2, subsidy_df2 = collect_intervention_trials(
-        n_trials=n_trials_spaghetti,
-        T=T_spaghetti,
-        scenario_kwargs=scenario,
-        subsidy_params=subsidy,
-        max_workers=max_workers,
-        seed_base=seed_base,
-        strategy_choice_func=strategy_choice_func,
-        tau=tau,
-    )
-    traces_df = traces_to_long_df(baseline_X, subsidy_X)
-    spaghetti_path = plot_spaghetti(traces_df, max_traces=100, alpha=0.15)
-    print("Saved spaghetti plot:", spaghetti_path)
+        # Also run the phase plot of X* over (X0, a_I/b) and save it
+        phase_df = phase_sweep_df(
+            max_workers=1,
+            backend="thread",
+            X0_values=np.linspace(0.0, 1.0, 21),
+            ratio_values=np.linspace(0.8, 3.5, 31),
+            batch_size=8,
+            T=200,
+            strategy_choice_func="logit",
+            tau=1.0,
+            scenario_kwargs=scenario
+        )
+        phase_path = plot_phase_plot(phase_df, out_path=f"phase_{label}.png")
+        print("Saved phase plot:", phase_path)
 
-    density_path = plot_density(traces_df, x_bins=50, time_bins=T_spaghetti)
-    print("Saved time-evolving density plot:", density_path)
+        # Spaghetti and time-evolving density plots
+        # Use a larger trial count for clearer trace/density visuals
+        n_trials_spaghetti = 100
+        T_spaghetti = 200
 
-    # Ratio sweep computed to DF then plotted
-    sweep_df = ratio_sweep_df(
-        X0_frac=scenario.get("X0_frac", 0.40),
-        ratio_values=np.linspace(0.8, 3.5, 31),
-        scenario_kwargs=scenario,
-        T=200,
-        batch_size=8,
-        strategy_choice_func="logit",
-        tau=1.0,
-    )
-    sweep_path = plot_ratio_sweep(sweep_df)
-    print("Saved ratio sweep plot:", sweep_path)
+        baseline_X, baseline_I, subsidy_X, subsidy_I, baseline_df2, subsidy_df2 = collect_intervention_trials(
+            n_trials=n_trials_spaghetti,
+            T=T_spaghetti,
+            scenario_kwargs=scenario,
+            subsidy_params=subsidy,
+            max_workers=max_workers,
+            seed_base=seed_base,
+            strategy_choice_func=strategy_choice_func,
+            tau=tau,
+        )
+        traces_df = traces_to_long_df(baseline_X, subsidy_X)
+        spaghetti_path = plot_spaghetti(traces_df, max_traces=100, alpha=0.15, out_path=f"plots/spaghetti_{label}.png")
+        
+        print("Saved spaghetti plot:", spaghetti_path)
+
+        density_path = plot_density(traces_df, x_bins=50, time_bins=T_spaghetti, out_path=f"density_{label}.png")
+        print("Saved time-evolving density plot:", density_path)
+
+        # Ratio sweep computed to DF then plotted
+        sweep_df = ratio_sweep_df(
+            X0_frac=scenario.get("X0_frac", 0.40),
+            ratio_values=np.linspace(0.8, 3.5, 31),
+            scenario_kwargs=scenario,
+            T=200,
+            batch_size=8,
+            strategy_choice_func="logit",
+            tau=1.0
+        )
+        sweep_path = plot_ratio_sweep(sweep_df, out_path=f"ratio_sweep_{label}.png")
+        print("Saved ratio sweep plot:", sweep_path)
 
 
 if __name__ == "__main__":
