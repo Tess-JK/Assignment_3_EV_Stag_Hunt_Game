@@ -741,11 +741,11 @@ def run_intervention_example(
 
 def main():
     # Defaults aligned with original ev_stag_mesa_model.run_intervention_example
-    n_trials = 30  # use fewer than 500 for speed while keeping shape
-    T = 200
+    n_trials = 20  # use fewer than 500 for speed while keeping shape. Shortened
+    T = 50 # shortened
     strategy_choice_func = "imitate"
     tau = 1.0
-    max_workers = 1
+    max_workers = 4
     seed_base = 100
 
     base_scenario = dict(
@@ -756,7 +756,7 @@ def main():
         g_I=0.10,
         I0=0.05,
         network_type="BA",
-        n_nodes=300,
+        n_nodes=50, # Set this low just to make runtime smaller
         m=2,
         collect=True,
         X0_frac=0.40,
@@ -793,47 +793,47 @@ def main():
         fanchart_path = plot_intervention_fanchart(
             baseline_X,
             subsidy_X,
-            out_path=f"fanchart_{label}.png",  # <<< MODIFIED
+            out_path=f"plots/fanchart_{label}.png", 
         )
         print("Saved fanchart image:", fanchart_path)
 
         # Also run the phase plot of X* over (X0, a_I/b) and save it
         phase_df = phase_sweep_df(
-            max_workers=1,
+            max_workers=max_workers,
             backend="thread",
             X0_values=np.linspace(0.0, 1.0, 21),
             ratio_values=np.linspace(0.8, 3.5, 31),
             batch_size=8,
             T=200,
-            strategy_choice_func="logit",
-            tau=1.0,
+            strategy_choice_func=strategy_choice_func,
+            tau=tau,
             scenario_kwargs=scenario
         )
-        phase_path = plot_phase_plot(phase_df, out_path=f"phase_{label}.png")
+        phase_path = plot_phase_plot(phase_df, out_path=f"plots/phase_{label}.png")
         print("Saved phase plot:", phase_path)
 
         # Spaghetti and time-evolving density plots
         # Use a larger trial count for clearer trace/density visuals
-        # n_trials_spaghetti = 100
-        # T_spaghetti = 200
+        n_trials_spaghetti = 100
+        T_spaghetti = 200
 
-        # baseline_X, baseline_I, subsidy_X, subsidy_I, baseline_df2, subsidy_df2 = collect_intervention_trials(
-        #     n_trials=n_trials_spaghetti,
-        #     T=T_spaghetti,
-        #     scenario_kwargs=scenario,
-        #     subsidy_params=subsidy,
-        #     max_workers=max_workers,
-        #     seed_base=seed_base,
-        #     strategy_choice_func=strategy_choice_func,
-        #     tau=tau,
-        # )
-        # traces_df = traces_to_long_df(baseline_X, subsidy_X)
-        # spaghetti_path = plot_spaghetti(traces_df, max_traces=100, alpha=0.15, out_path=f"plots/spaghetti_{label}.png")
+        baseline_X, baseline_I, subsidy_X, subsidy_I, baseline_df2, subsidy_df2 = collect_intervention_trials(
+            n_trials=n_trials_spaghetti,
+            T=T_spaghetti,
+            scenario_kwargs=scenario,
+            subsidy_params=subsidy,
+            max_workers=max_workers,
+            seed_base=seed_base,
+            strategy_choice_func=strategy_choice_func,
+            tau=tau,
+        )
+        traces_df = traces_to_long_df(baseline_X, subsidy_X)
+        spaghetti_path = plot_spaghetti(traces_df, max_traces=100, alpha=0.15, out_path=f"plots/spaghetti_{label}.png")
         
-        # print("Saved spaghetti plot:", spaghetti_path)
+        print("Saved spaghetti plot:", spaghetti_path)
 
-        # density_path = plot_density(traces_df, x_bins=50, time_bins=T_spaghetti, out_path=f"density_{label}.png")
-        # print("Saved time-evolving density plot:", density_path)
+        density_path = plot_density(traces_df, x_bins=50, time_bins=T_spaghetti, out_path=f"plots/density_{label}.png")
+        print("Saved time-evolving density plot:", density_path)
 
         # Ratio sweep computed to DF then plotted
         sweep_df = ratio_sweep_df(
@@ -845,7 +845,7 @@ def main():
             strategy_choice_func="logit",
             tau=1.0
         )
-        sweep_path = plot_ratio_sweep(sweep_df, out_path=f"ratio_sweep_{label}.png")
+        sweep_path = plot_ratio_sweep(sweep_df, out_path=f"plots/ratio_sweep_{label}.png")
         print("Saved ratio sweep plot:", sweep_path)
 
 
