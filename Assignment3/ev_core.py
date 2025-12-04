@@ -218,7 +218,8 @@ class EVStagHuntModel(Model):
         if network_type == "BA":
             G = nx.barabasi_albert_graph(n_nodes, m, seed=seed)
         elif network_type == "grid":
-            G = nx.grid_2d_graph(n_nodes/2, n_nodes/2) 
+            G = nx.grid_2d_graph(int(round(n_nodes ** 0.5)), int(round(n_nodes ** 0.5)))
+            G = nx.convert_node_labels_to_integers(G) 
         else:
             G = nx.erdos_renyi_graph(n_nodes, p, seed=seed)
         self.G = G

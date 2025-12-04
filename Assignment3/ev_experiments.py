@@ -766,8 +766,8 @@ def main():
     subsidy = dict(start=10, end=60, delta_a0=0.4, delta_beta_I=0.0)
 
     scenarios = [
-        ("BA", {**base_scenario, "network_type": "BA"}),
-        ("ER", {**base_scenario, "network_type": "random"}),
+        # ("BA", {**base_scenario, "network_type": "BA"}),
+        # ("ER", {**base_scenario, "network_type": "random"}),
         ("Grids", {**base_scenario, "network_type": "grid"})
     ]
 
@@ -814,26 +814,26 @@ def main():
 
         # Spaghetti and time-evolving density plots
         # Use a larger trial count for clearer trace/density visuals
-        n_trials_spaghetti = 100
-        T_spaghetti = 200
+        # n_trials_spaghetti = 100
+        # T_spaghetti = 200
 
-        baseline_X, baseline_I, subsidy_X, subsidy_I, baseline_df2, subsidy_df2 = collect_intervention_trials(
-            n_trials=n_trials_spaghetti,
-            T=T_spaghetti,
-            scenario_kwargs=scenario,
-            subsidy_params=subsidy,
-            max_workers=max_workers,
-            seed_base=seed_base,
-            strategy_choice_func=strategy_choice_func,
-            tau=tau,
-        )
-        traces_df = traces_to_long_df(baseline_X, subsidy_X)
-        spaghetti_path = plot_spaghetti(traces_df, max_traces=100, alpha=0.15, out_path=f"plots/spaghetti_{label}.png")
+        # baseline_X, baseline_I, subsidy_X, subsidy_I, baseline_df2, subsidy_df2 = collect_intervention_trials(
+        #     n_trials=n_trials_spaghetti,
+        #     T=T_spaghetti,
+        #     scenario_kwargs=scenario,
+        #     subsidy_params=subsidy,
+        #     max_workers=max_workers,
+        #     seed_base=seed_base,
+        #     strategy_choice_func=strategy_choice_func,
+        #     tau=tau,
+        # )
+        # traces_df = traces_to_long_df(baseline_X, subsidy_X)
+        # spaghetti_path = plot_spaghetti(traces_df, max_traces=100, alpha=0.15, out_path=f"plots/spaghetti_{label}.png")
         
-        print("Saved spaghetti plot:", spaghetti_path)
+        # print("Saved spaghetti plot:", spaghetti_path)
 
-        density_path = plot_density(traces_df, x_bins=50, time_bins=T_spaghetti, out_path=f"density_{label}.png")
-        print("Saved time-evolving density plot:", density_path)
+        # density_path = plot_density(traces_df, x_bins=50, time_bins=T_spaghetti, out_path=f"density_{label}.png")
+        # print("Saved time-evolving density plot:", density_path)
 
         # Ratio sweep computed to DF then plotted
         sweep_df = ratio_sweep_df(
