@@ -248,11 +248,7 @@ def collect_intervention_trials(
         mat = np.vstack(X_list)
         df = pd.DataFrame({
             "X_mean": mat.mean(axis=0),
-            "X_med": np.median(mat, axis=0),
-            "X_q10": np.quantile(mat, 0.10, axis=0),
-            "X_q25": np.quantile(mat, 0.25, axis=0),
-            "X_q75": np.quantile(mat, 0.75, axis=0),
-            "X_q90": np.quantile(mat, 0.90, axis=0),
+            "X_q005": np.quantile(mat, 0.05, axis=0),
         })
         return df
 
@@ -792,7 +788,6 @@ def main():
 
     scenarios = [
         ("InitialAdoption0.3", {**base_scenario, "X0_frac": 0.3}),
-        ("InitialAdoption0.5", {**base_scenario, "X0_frac": 0.5}),
         # ("BA", {**base_scenario, "network_type": "BA"}),
         # ("ER", {**base_scenario, "network_type": "random"}),
         # ("Grids", {**base_scenario, "network_type": "grid"})
@@ -825,8 +820,19 @@ def main():
             subsidy_X=subsidy_X,
             subsidy_I=subsidy_I,
             baseline_df=baseline_df,
-            subsidy_df=subsidy_df,
+            subsidy_df=subsidy_df
         )
+
+        # Build traces for spaghetti/density from the same trajectories
+        traces_df = traces_to_long_df(baseline_X, subsidy_X)
+
+        save_scenario_data(
+            label,
+            "spaghetti_density",
+            traces_df=traces_df,
+        )
+
+        print(f"Saved intervention + spaghetti/density data for {label}")
 
         # Also run the phase plot of X* over (X0, a_I/b) and save it
         phase_df = phase_sweep_df(
@@ -841,33 +847,7 @@ def main():
             scenario_kwargs=scenario
         )
         save_scenario_data(label, "phase", phase_df=phase_df)
-        print(f"Saved phaase data for {label}")
-
-        # Spaghetti and time-evolving density plots
-        # Use a larger trial count for clearer trace/density visuals
-        n_trials_spaghetti = 100
-        T_spaghetti = 200
-
-        baseline_X, baseline_I, subsidy_X, subsidy_I, baseline_df2, subsidy_df2 = collect_intervention_trials(
-            n_trials=n_trials_spaghetti,
-            T=T_spaghetti,
-            scenario_kwargs=scenario,
-            subsidy_params=subsidy,
-            max_workers=max_workers,
-            seed_base=seed_base,
-            strategy_choice_func=strategy_choice_func,
-            tau=tau,
-        )
-        traces_df = traces_to_long_df(baseline_X, subsidy_X)
-        save_scenario_data(
-            label,
-            "spaghetti_density",   # dataset name
-            traces_df=traces_df,
-            n_trials=n_trials_spaghetti,
-            T=T_spaghetti,
-        )
-
-        print(f"Saved spaghetti/density data for {label}")
+        print(f"Saved phase data for {label}")
 
         # Ratio sweep computed to DF then plotted
         sweep_df = ratio_sweep_df(
@@ -879,8 +859,8 @@ def main():
             strategy_choice_func=strategy_choice_func,
             tau=tau
         )
-        sweep_path = plot_ratio_sweep(sweep_df, out_path=f"plots_{label}/ratio_sweep_{label}.png")
-        print("Saved ratio sweep plot:", sweep_path)
+        save_scenario_data(label, "ratio_sweep", sweep_df=sweep_df)
+        print(f"Saved ratio sweep data for {label}")
 
 
 if __name__ == "__main__":
