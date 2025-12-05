@@ -17,6 +17,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.pyplot as plt
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+import pickle
 
 from ev_core import (
     EVStagHuntModel,
@@ -247,11 +248,7 @@ def collect_intervention_trials(
         mat = np.vstack(X_list)
         df = pd.DataFrame({
             "X_mean": mat.mean(axis=0),
-            "X_med": np.median(mat, axis=0),
-            "X_q10": np.quantile(mat, 0.10, axis=0),
-            "X_q25": np.quantile(mat, 0.25, axis=0),
-            "X_q75": np.quantile(mat, 0.75, axis=0),
-            "X_q90": np.quantile(mat, 0.90, axis=0),
+            "X_q005": np.quantile(mat, 0.05, axis=0),
         })
         return df
 
@@ -737,6 +734,27 @@ def run_intervention_example(
     img_path = plot_fanchart(traces_df)
     return baseline_df, subsidy_df, img_path
 
+def save_scenario_data(label: str, name: str, **data):
+    """
+    Save arbitrary keyword-argument data to a pickle file inside plots_{label}/.
+
+    Example:
+        save_scenario_data("InitialAdoption0.3", "intervention",
+                           baseline_X=..., subsidy_X=..., baseline_df=...)
+
+    Produces:
+        plots_InitialAdoption0.3/intervention_data.pkl
+    """
+    folder = f"data_{label}"
+    os.makedirs(folder, exist_ok=True)
+
+    path = os.path.join(folder, f"{name}_data.pkl")
+
+    with open(path, "wb") as f:
+        pickle.dump(data, f)
+
+    print(f"[saved] {path}")
+    return path
 
 # -----------------------------
 # CLI Entrypoint
@@ -770,7 +788,6 @@ def main():
 
     scenarios = [
         ("InitialAdoption0.3", {**base_scenario, "X0_frac": 0.3}),
-        ("InitialAdoption0.5", {**base_scenario, "X0_frac": 0.5}),
         # ("BA", {**base_scenario, "network_type": "BA"}),
         # ("ER", {**base_scenario, "network_type": "random"}),
         # ("Grids", {**base_scenario, "network_type": "grid"})
@@ -778,11 +795,7 @@ def main():
 
     for label, scenario in scenarios:
         print(f"\n=== Running scenario: {label} ===")
-        
-        # Create a folder with the label name if it doesn't exist
-        folder = f"plots_{label}"
-        os.makedirs(folder, exist_ok=True)
-        
+
         #Intervention trials + fanchart
         baseline_X, baseline_I, subsidy_X, subsidy_I, baseline_df, subsidy_df = collect_intervention_trials(
             n_trials=n_trials,
@@ -798,13 +811,28 @@ def main():
         print("Baseline DF shape:", baseline_df.shape)
         print("Subsidy DF shape:", subsidy_df.shape)
         print("Baseline final X_mean:", float(baseline_df["X_mean"].iloc[-1]))
-        print("Subsidy  final X_mean:", float(subsidy_df["X_mean"].iloc[-1]))
-        fanchart_path = plot_intervention_fanchart(
-            baseline_X,
-            subsidy_X,
-            out_path=f"plots_{label}/fanchart_{label}.png", 
+
+        save_scenario_data(
+            label,
+            "intervention",
+            baseline_X=baseline_X,
+            baseline_I=baseline_I,
+            subsidy_X=subsidy_X,
+            subsidy_I=subsidy_I,
+            baseline_df=baseline_df,
+            subsidy_df=subsidy_df
         )
-        print("Saved fanchart image:", fanchart_path)
+
+        # Build traces for spaghetti/density from the same trajectories
+        traces_df = traces_to_long_df(baseline_X, subsidy_X)
+
+        save_scenario_data(
+            label,
+            "spaghetti_density",
+            traces_df=traces_df,
+        )
+
+        print(f"Saved intervention + spaghetti/density data for {label}")
 
         # Also run the phase plot of X* over (X0, a_I/b) and save it
         phase_df = phase_sweep_df(
@@ -818,31 +846,8 @@ def main():
             tau=tau,
             scenario_kwargs=scenario
         )
-        phase_path = plot_phase_plot(phase_df, out_path=f"plots_{label}/phase_{label}.png")
-        print("Saved phase plot:", phase_path)
-
-        # Spaghetti and time-evolving density plots
-        # Use a larger trial count for clearer trace/density visuals
-        n_trials_spaghetti = 100
-        T_spaghetti = 200
-
-        baseline_X, baseline_I, subsidy_X, subsidy_I, baseline_df2, subsidy_df2 = collect_intervention_trials(
-            n_trials=n_trials_spaghetti,
-            T=T_spaghetti,
-            scenario_kwargs=scenario,
-            subsidy_params=subsidy,
-            max_workers=max_workers,
-            seed_base=seed_base,
-            strategy_choice_func=strategy_choice_func,
-            tau=tau,
-        )
-        traces_df = traces_to_long_df(baseline_X, subsidy_X)
-        spaghetti_path = plot_spaghetti(traces_df, max_traces=100, alpha=0.15, out_path=f"plots_{label}/spaghetti_{label}.png")
-        
-        print("Saved spaghetti plot:", spaghetti_path)
-
-        density_path = plot_density(traces_df, x_bins=50, time_bins=T_spaghetti, out_path=f"plots_{label}/density_{label}.png")
-        print("Saved time-evolving density plot:", density_path)
+        save_scenario_data(label, "phase", phase_df=phase_df)
+        print(f"Saved phase data for {label}")
 
         # Ratio sweep computed to DF then plotted
         sweep_df = ratio_sweep_df(
@@ -854,8 +859,8 @@ def main():
             strategy_choice_func=strategy_choice_func,
             tau=tau
         )
-        sweep_path = plot_ratio_sweep(sweep_df, out_path=f"plots_{label}/ratio_sweep_{label}.png")
-        print("Saved ratio sweep plot:", sweep_path)
+        save_scenario_data(label, "ratio_sweep", sweep_df=sweep_df)
+        print(f"Saved ratio sweep data for {label}")
 
 
 if __name__ == "__main__":
