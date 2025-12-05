@@ -762,8 +762,8 @@ def save_scenario_data(label: str, name: str, **data):
 
 def main():
     # Defaults aligned with original ev_stag_mesa_model.run_intervention_example
-    n_trials = 20  # use fewer than 500 for speed while keeping shape. Shortened
-    T = 50 # shortened
+    n_trials = 100  # use fewer than 500 for speed while keeping shape. Shortened
+    T = 200 # shortened
     strategy_choice_func = "imitate"
     tau = 1.0
     max_workers = 4
@@ -788,9 +788,10 @@ def main():
 
     scenarios = [
         ("InitialAdoption0.3", {**base_scenario, "X0_frac": 0.3}),
-        # ("BA", {**base_scenario, "network_type": "BA"}),
-        # ("ER", {**base_scenario, "network_type": "random"}),
-        # ("Grids", {**base_scenario, "network_type": "grid"})
+        ("InitialAdoption0.5", {**base_scenario, "X0_frac": 0.3}),
+        ("BA", {**base_scenario, "network_type": "BA"}),
+        ("ER", {**base_scenario, "network_type": "random"}),
+        ("Grids", {**base_scenario, "network_type": "grid"})
     ]
 
     for label, scenario in scenarios:
