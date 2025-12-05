@@ -787,8 +787,12 @@ def main():
     subsidy = dict(start=10, end=60, delta_a0=0.4, delta_beta_I=0.0)
 
     scenarios = [
-        ("InitialAdoption0.3", {**base_scenario, "X0_frac": 0.3}),
-        ("InitialAdoption0.5", {**base_scenario, "X0_frac": 0.3}),
+        ("InitialAdoption0.3", {**base_scenario, "X0_frac": 0.3}), #originally 0.4
+        ("InitialAdoption0.5", {**base_scenario, "X0_frac": 0.5}), 
+        ("InitialInfrastructur0.15", {**base_scenario, "I0": 0.15}), #originally 0.05
+        ("InitialInfrastructur0.25", {**base_scenario, "I0": 0.25}),
+        ("HighBetaI3.0", {**base_scenario, "beta_I": 3.0}), #originally 2.0
+        ("LowBetaI1.0", {**base_scenario, "beta_I": 1.0}),  #controls how contagious the behavior is
         ("BA", {**base_scenario, "network_type": "BA"}),
         ("ER", {**base_scenario, "network_type": "random"}),
         ("Grids", {**base_scenario, "network_type": "grid"})
