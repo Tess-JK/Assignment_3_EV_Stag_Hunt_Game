@@ -769,14 +769,20 @@ def main():
     subsidy = dict(start=10, end=60, delta_a0=0.4, delta_beta_I=0.0)
 
     scenarios = [
+        ("InitialAdoption0.3", {**base_scenario, "X0_frac": 0.3}),
+        ("InitialAdoption0.5", {**base_scenario, "X0_frac": 0.5}),
         # ("BA", {**base_scenario, "network_type": "BA"}),
         # ("ER", {**base_scenario, "network_type": "random"}),
-        ("Grids", {**base_scenario, "network_type": "grid"})
+        # ("Grids", {**base_scenario, "network_type": "grid"})
     ]
 
     for label, scenario in scenarios:
         print(f"\n=== Running scenario: {label} ===")
-
+        
+        # Create a folder with the label name if it doesn't exist
+        folder = f"plots_{label}"
+        os.makedirs(folder, exist_ok=True)
+        
         #Intervention trials + fanchart
         baseline_X, baseline_I, subsidy_X, subsidy_I, baseline_df, subsidy_df = collect_intervention_trials(
             n_trials=n_trials,
@@ -796,7 +802,7 @@ def main():
         fanchart_path = plot_intervention_fanchart(
             baseline_X,
             subsidy_X,
-            out_path=f"plots/fanchart_{label}.png", 
+            out_path=f"plots_{label}/fanchart_{label}.png", 
         )
         print("Saved fanchart image:", fanchart_path)
 
@@ -812,7 +818,7 @@ def main():
             tau=tau,
             scenario_kwargs=scenario
         )
-        phase_path = plot_phase_plot(phase_df, out_path=f"plots/phase_{label}.png")
+        phase_path = plot_phase_plot(phase_df, out_path=f"plots_{label}/phase_{label}.png")
         print("Saved phase plot:", phase_path)
 
         # Spaghetti and time-evolving density plots
@@ -831,11 +837,11 @@ def main():
             tau=tau,
         )
         traces_df = traces_to_long_df(baseline_X, subsidy_X)
-        spaghetti_path = plot_spaghetti(traces_df, max_traces=100, alpha=0.15, out_path=f"plots/spaghetti_{label}.png")
+        spaghetti_path = plot_spaghetti(traces_df, max_traces=100, alpha=0.15, out_path=f"plots_{label}/spaghetti_{label}.png")
         
         print("Saved spaghetti plot:", spaghetti_path)
 
-        density_path = plot_density(traces_df, x_bins=50, time_bins=T_spaghetti, out_path=f"plots/density_{label}.png")
+        density_path = plot_density(traces_df, x_bins=50, time_bins=T_spaghetti, out_path=f"plots_{label}/density_{label}.png")
         print("Saved time-evolving density plot:", density_path)
 
         # Ratio sweep computed to DF then plotted
@@ -845,10 +851,10 @@ def main():
             scenario_kwargs=scenario,
             T=200,
             batch_size=8,
-            strategy_choice_func="logit",
-            tau=1.0
+            strategy_choice_func=strategy_choice_func,
+            tau=tau
         )
-        sweep_path = plot_ratio_sweep(sweep_df, out_path=f"plots/ratio_sweep_{label}.png")
+        sweep_path = plot_ratio_sweep(sweep_df, out_path=f"plots_{label}/ratio_sweep_{label}.png")
         print("Saved ratio sweep plot:", sweep_path)
 
 
