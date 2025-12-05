@@ -777,7 +777,7 @@ def main():
         g_I=0.10,
         I0=0.05,
         network_type="BA",
-        n_nodes=50, # Set this low just to make runtime smaller
+        n_nodes=100, # Set this low just to make runtime smaller
         m=2,
         collect=True,
         X0_frac=0.40,
