@@ -762,8 +762,8 @@ def save_scenario_data(label: str, name: str, **data):
 
 def main():
     # Defaults aligned with original ev_stag_mesa_model.run_intervention_example
-    n_trials = 100  # use fewer than 500 for speed while keeping shape. Shortened
-    T = 200 # shortened
+    n_trials = 200  # use fewer than 500 for speed while keeping shape. Shortened
+    T = 300 # shortened
     strategy_choice_func = "imitate"
     tau = 1.0
     max_workers = 4
@@ -777,7 +777,7 @@ def main():
         g_I=0.10,
         I0=0.05,
         network_type="BA",
-        n_nodes=100, # Set this low just to make runtime smaller
+        n_nodes=150, # Set this low just to make runtime smaller
         m=2,
         collect=True,
         X0_frac=0.40,
