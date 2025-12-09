@@ -216,7 +216,7 @@ def collect_intervention_trials(
                 "T": T,
                 "scenario_kwargs": scenario,
                 "seed": seed,
-                "policy": {"type": "subsidy", "params": subsidy},
+                "policy": {"type": "infrastructure", "params": subsidy},
                 "strategy_choice_func": strategy_choice_func,
                 "tau": tau,
             }
@@ -374,180 +374,6 @@ def phase_sweep_df(
         for j, ratio in enumerate(ratio_values):
             rows.append((float(X0), float(ratio), float(X_final[j, i])))
     return pd.DataFrame(rows, columns=["X0", "ratio", "X_final"])
-
-
-def plot_intervention_fanchart(
-    baseline_X: List[np.ndarray],
-    subsidy_X: List[np.ndarray],
-    out_path: Optional[str] = None,
-) -> str:
-    """Plot fan charts for baseline and subsidy trials and save to file.
-
-    Returns the file path to the saved image.
-    """
-    T = len(baseline_X[0]) if baseline_X else 0
-    t = np.arange(T)
-
-    def quantiles(X_list: List[np.ndarray]):
-        mat = np.vstack(X_list)
-        return {
-            "mean": mat.mean(axis=0),
-            "q10": np.quantile(mat, 0.10, axis=0),
-            "q25": np.quantile(mat, 0.25, axis=0),
-            "q75": np.quantile(mat, 0.75, axis=0),
-            "q90": np.quantile(mat, 0.90, axis=0),
-            "final": mat[:, -1],
-        }
-
-    bq = quantiles(baseline_X)
-    sq = quantiles(subsidy_X)
-
-    fig, axes = plt.subplots(2, 2, figsize=(11, 8), constrained_layout=True)
-
-    # Baseline fan chart
-    ax = axes[0, 0]
-    ax.fill_between(t, bq["q10"], bq["q90"], color="steelblue", alpha=0.15, label="10–90%")
-    ax.fill_between(t, bq["q25"], bq["q75"], color="steelblue", alpha=0.30, label="25–75%")
-    for X in baseline_X:
-        ax.plot(t, X, color="steelblue", alpha=0.10, linewidth=1)
-    ax.plot(t, bq["mean"], color="steelblue", linewidth=2, label="mean")
-    ax.set_title("Baseline adoption")
-    ax.set_xlabel("Time")
-    ax.set_ylabel("X(t)")
-    ax.set_ylim(0, 1)
-    ax.legend(loc="lower right")
-
-    # Subsidy fan chart
-    ax = axes[0, 1]
-    ax.fill_between(t, sq["q10"], sq["q90"], color="darkorange", alpha=0.15, label="10–90%")
-    ax.fill_between(t, sq["q25"], sq["q75"], color="darkorange", alpha=0.30, label="25–75%")
-    for X in subsidy_X:
-        ax.plot(t, X, color="darkorange", alpha=0.10, linewidth=1)
-    ax.plot(t, sq["mean"], color="darkorange", linewidth=2, label="mean")
-    ax.set_title("Subsidy adoption")
-    ax.set_xlabel("Time")
-    ax.set_ylabel("X(t)")
-    ax.set_ylim(0, 1)
-    ax.legend(loc="lower right")
-
-    # Histograms of final X(T)
-    axes[1, 0].hist(bq["final"], bins=20, color="steelblue", alpha=0.8)
-    axes[1, 0].set_title("Baseline final adoption X(T)")
-    axes[1, 0].set_xlabel("X(T)")
-    axes[1, 0].set_ylabel("Count")
-
-    axes[1, 1].hist(sq["final"], bins=20, color="darkorange", alpha=0.8)
-    axes[1, 1].set_title("Subsidy final adoption X(T)")
-    axes[1, 1].set_xlabel("X(T)")
-    axes[1, 1].set_ylabel("Count")
-
-    # Save figure
-    if out_path is None:
-        out_path = os.path.join(os.getcwd(), "ev_intervention_fanchart.png")
-    fig.savefig(out_path, dpi=140)
-    plt.close(fig)
-    return out_path
-
-
-def plot_spaghetti_traces(
-    baseline_X: List[np.ndarray],
-    subsidy_X: List[np.ndarray],
-    *,
-    max_traces: int = 100,
-    alpha: float = 0.15,
-    out_path: Optional[str] = None,
-) -> str:
-    """Plot raw trajectories as thin, transparent lines for baseline/subsidy.
-
-    Shows bifurcation visually: many lines diverging toward 0 or 1 over time.
-    """
-    # Select random subset for visual clarity
-    rng = np.random.default_rng(123)
-    def subset(trajs: List[np.ndarray]) -> List[np.ndarray]:
-        if len(trajs) <= max_traces:
-            return trajs
-        idx = rng.choice(len(trajs), size=max_traces, replace=False)
-        return [trajs[i] for i in idx]
-
-    b_sub = subset(baseline_X)
-    s_sub = subset(subsidy_X)
-
-    T = len(b_sub[0]) if b_sub else 0
-    t = np.arange(T)
-
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4.5), constrained_layout=True)
-
-    ax = axes[0]
-    for X in b_sub:
-        ax.plot(t, X, color="steelblue", alpha=alpha, linewidth=0.8)
-    ax.set_title("Baseline traces")
-    ax.set_xlabel("Time")
-    ax.set_ylabel("X(t)")
-    ax.set_ylim(0, 1)
-
-    ax = axes[1]
-    for X in s_sub:
-        ax.plot(t, X, color="darkorange", alpha=alpha, linewidth=0.8)
-    ax.set_title("Subsidy traces")
-    ax.set_xlabel("Time")
-    ax.set_ylabel("X(t)")
-    ax.set_ylim(0, 1)
-
-    if out_path is None:
-        out_path = os.path.join(os.getcwd(), "ev_spaghetti.png")
-    fig.savefig(out_path, dpi=140)
-    plt.close(fig)
-    return out_path
-
-
-def plot_time_evolving_density(
-    baseline_X: List[np.ndarray],
-    subsidy_X: List[np.ndarray],
-    *,
-    x_bins: int = 50,
-    time_bins: Optional[int] = None,
-    out_path: Optional[str] = None,
-) -> str:
-    """Plot 2D histograms of (time, X) densities for baseline and subsidy.
-
-    X-axis: time, Y-axis: adoption X(t), Color: frequency/density of passes.
-    """
-    if not baseline_X or not subsidy_X:
-        raise ValueError("Need non-empty baseline and subsidy trajectories")
-
-    T = len(baseline_X[0])
-    if time_bins is None:
-        time_bins = T
-
-    # Flatten (t, X) points across all trials
-    def flatten_points(trajs: List[np.ndarray]):
-        t = np.arange(T)
-        t_all = np.repeat(t, len(trajs))
-        x_all = np.hstack(trajs)
-        return t_all, x_all
-
-    bt, bx = flatten_points(baseline_X)
-    st, sx = flatten_points(subsidy_X)
-
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4.8), constrained_layout=True)
-
-    hb = axes[0].hist2d(bt, bx, bins=[time_bins, x_bins], range=[[0, T - 1], [0.0, 1.0]], cmap="magma")
-    axes[0].set_title("Baseline density: time vs X(t)")
-    axes[0].set_xlabel("Time")
-    axes[0].set_ylabel("X(t)")
-    fig.colorbar(hb[3], ax=axes[0], label="count")
-
-    hs = axes[1].hist2d(st, sx, bins=[time_bins, x_bins], range=[[0, T - 1], [0.0, 1.0]], cmap="magma")
-    axes[1].set_title("Subsidy density: time vs X(t)")
-    axes[1].set_xlabel("Time")
-    axes[1].set_ylabel("X(t)")
-    fig.colorbar(hs[3], ax=axes[1], label="count")
-
-    if out_path is None:
-        out_path = os.path.join(os.getcwd(), "ev_density.png")
-    fig.savefig(out_path, dpi=140)
-    plt.close(fig)
-    return out_path
 
 
 def run_ratio_sweep_plot(
@@ -762,8 +588,8 @@ def save_scenario_data(label: str, name: str, **data):
 
 def main():
     # Defaults aligned with original ev_stag_mesa_model.run_intervention_example
-    n_trials = 200  # use fewer than 500 for speed while keeping shape. Shortened
-    T = 300 # shortened
+    n_trials = 100  # use fewer than 500 for speed while keeping shape. Shortened
+    T = 100 # shortened
     strategy_choice_func = "imitate"
     tau = 1.0
     max_workers = 4
@@ -777,23 +603,23 @@ def main():
         g_I=0.10,
         I0=0.05,
         network_type="BA",
-        n_nodes=150, # Set this low just to make runtime smaller
+        n_nodes=20 , # Set this low just to make runtime smaller
         m=2,
         collect=True,
         X0_frac=0.40,
         init_method="random",
         p=0.05,
     )
-    subsidy = dict(start=10, end=60, delta_a0=0.4, delta_beta_I=0.0)
+    subsidy = dict(start=50, boost=0.2, once=True)
 
     scenarios = [
         # ("InitialAdoption0.3", {**base_scenario, "X0_frac": 0.3}), #originally 0.4
         # ("InitialAdoption0.5", {**base_scenario, "X0_frac": 0.5}), 
-        ("InitialInfrastructur0.15", {**base_scenario, "I0": 0.15}), #originally 0.05
-        ("InitialInfrastructur0.25", {**base_scenario, "I0": 0.25}),
-        ("HighBetaI3.0", {**base_scenario, "beta_I": 3.0}), #originally 2.0
-        ("LowBetaI1.0", {**base_scenario, "beta_I": 1.0}),  #controls how contagious the behavior is
-        # ("BA", {**base_scenario, "network_type": "BA"}),
+        # ("InitialInfrastructur0.15", {**base_scenario, "I0": 0.15}), #originally 0.05
+        # ("InitialInfrastructur0.25", {**base_scenario, "I0": 0.25}),
+        # ("HighBetaI3.0", {**base_scenario, "beta_I": 3.0}), #originally 2.0
+        # ("LowBetaI1.0", {**base_scenario, "beta_I": 1.0}),  #controls how contagious the behavior is
+        ("BA", {**base_scenario, "network_type": "BA"}),
         # ("ER", {**base_scenario, "network_type": "random"}),
         # ("Grids", {**base_scenario, "network_type": "grid"})
     ]
