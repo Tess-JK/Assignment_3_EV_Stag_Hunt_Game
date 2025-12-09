@@ -15,7 +15,6 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import matplotlib.pyplot as plt
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 import pickle
 
@@ -76,6 +75,24 @@ def policy_infrastructure_boost_factory(start: int, boost: float = 0.2, once: bo
 
     return policy
 
+def policy_carbon_tax(start: int, delta_b: float = -0.3) -> Callable:
+    """
+    Permanently change b at a given time step (carbon tax).
+
+    delta_b should be NEGATIVE to make defection (ICE) less attractive.
+    """
+    def policy(model, step):
+        # Do nothing before the tax kicks in
+        if step < start:
+            return
+
+        # Apply the tax once, then never touch b again
+        if not hasattr(policy, "done"):
+            policy.base_b = model.b          # original payoff to D
+            model.b = policy.base_b + delta_b
+            policy.done = True               # flag so we don't re-apply
+
+    return policy
 
 # -----------------------------
 # Trial runner
@@ -166,6 +183,8 @@ def _timeseries_trial_worker(args_dict: Dict) -> Tuple[np.ndarray, np.ndarray]:
             policy = policy_subsidy_factory(**policy_spec["params"])
         elif ptype == "infrastructure":
             policy = policy_infrastructure_boost_factory(**policy_spec["params"])
+        elif ptype == "carbon_tax":       
+            policy = policy_carbon_tax(**policy_spec["params"])
 
     X, I, _df = run_timeseries_trial(
         T=T,
@@ -216,7 +235,7 @@ def collect_intervention_trials(
                 "T": T,
                 "scenario_kwargs": scenario,
                 "seed": seed,
-                "policy": {"type": "infrastructure", "params": subsidy},
+                "policy": {"type": "carbon_tax", "params": subsidy},
                 "strategy_choice_func": strategy_choice_func,
                 "tau": tau,
             }
@@ -588,8 +607,8 @@ def save_scenario_data(label: str, name: str, **data):
 
 def main():
     # Defaults aligned with original ev_stag_mesa_model.run_intervention_example
-    n_trials = 100  # use fewer than 500 for speed while keeping shape. Shortened
-    T = 100 # shortened
+    n_trials = 200  # use fewer than 500 for speed while keeping shape. Shortened
+    T = 200 # shortened
     strategy_choice_func = "imitate"
     tau = 1.0
     max_workers = 4
@@ -603,28 +622,59 @@ def main():
         g_I=0.10,
         I0=0.05,
         network_type="BA",
-        n_nodes=20 , # Set this low just to make runtime smaller
+        n_nodes=150 , # Set this low just to make runtime smaller
         m=2,
         collect=True,
         X0_frac=0.40,
         init_method="random",
         p=0.05,
     )
-    subsidy = dict(start=50, boost=0.2, once=True)
 
+    subsidy_early = dict(start=0, delta_b=-0.3) 
+    subsidy_late = dict(start=50, delta_b=-0.3) 
     scenarios = [
-        # ("InitialAdoption0.3", {**base_scenario, "X0_frac": 0.3}), #originally 0.4
-        # ("InitialAdoption0.5", {**base_scenario, "X0_frac": 0.5}), 
-        # ("InitialInfrastructur0.15", {**base_scenario, "I0": 0.15}), #originally 0.05
-        # ("InitialInfrastructur0.25", {**base_scenario, "I0": 0.25}),
-        # ("HighBetaI3.0", {**base_scenario, "beta_I": 3.0}), #originally 2.0
-        # ("LowBetaI1.0", {**base_scenario, "beta_I": 1.0}),  #controls how contagious the behavior is
-        ("BA", {**base_scenario, "network_type": "BA"}),
-        # ("ER", {**base_scenario, "network_type": "random"}),
-        # ("Grids", {**base_scenario, "network_type": "grid"})
+        ("InitialAdoption0.3",
+            {**base_scenario, "X0_frac": 0.3},
+            subsidy_early),
+
+        ("InitialAdoption0.5",
+            {**base_scenario, "X0_frac": 0.5},
+            subsidy_early),
+
+        ("InitialInfrastructure0.15",
+            {**base_scenario, "I0": 0.15},
+            subsidy_early),
+
+        ("InitialInfrastructure0.25",
+            {**base_scenario, "I0": 0.25},
+            subsidy_early),
+
+        ("HighBetaI3.0",
+            {**base_scenario, "beta_I": 3.0},
+            subsidy_early),
+
+        ("LowBetaI1.0",
+            {**base_scenario, "beta_I": 1.0},
+            subsidy_early),
+
+        ("BA_early",
+            {**base_scenario, "network_type": "BA"},
+            subsidy_early),
+
+        ("BA_late",
+            {**base_scenario, "network_type": "BA"},
+            subsidy_late),
+
+        ("ER",
+            {**base_scenario, "network_type": "ER"},
+            subsidy_early),
+
+        ("Grids",
+            {**base_scenario, "network_type": "Grids"},
+            subsidy_early),
     ]
 
-    for label, scenario in scenarios:
+    for label, scenario, subsidy in scenarios:
         print(f"\n=== Running scenario: {label} ===")
 
         #Intervention trials + fanchart
