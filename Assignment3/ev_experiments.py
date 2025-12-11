@@ -16,6 +16,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+import networkx as nx
 import pickle
 
 from ev_core import (
@@ -94,6 +95,28 @@ def policy_carbon_tax(start: int, delta_b: float = -0.3) -> Callable:
 
     return policy
 
+def get_network_metrics(G) -> Dict:
+    """Calculates structural network metrics (Clustering, Connectivity, Components)."""
+    try:
+        avg_clustering = nx.average_clustering(G)
+        degrees = [d for n, d in G.degree()]
+        avg_degree = np.mean(degrees) if degrees else 0.0
+        density = nx.density(G)
+        
+        components = list(nx.connected_components(G))
+        num_components = len(components)
+        largest_component_size = len(max(components, key=len)) if components else 0
+        
+    except Exception:
+        return {} # Returns empty if graph is invalid
+
+    return {
+        "avg_clustering": avg_clustering,
+        "avg_degree": avg_degree,
+        "density": density,
+        "num_components": num_components,
+        "largest_component_size": largest_component_size
+    }
 # -----------------------------
 # Trial runner
 # -----------------------------
@@ -164,7 +187,10 @@ def run_timeseries_trial(
         model.step()
 
     df = model.datacollector.get_model_vars_dataframe().copy()
-    return df["X"].to_numpy(), df["I"].to_numpy(), df
+    net_stats = get_network_metrics(model.G)
+    if seed is not None:
+        net_stats["seed"] = seed
+    return df["X"].to_numpy(), df["I"].to_numpy(), df, net_stats
 
 
 def _timeseries_trial_worker(args_dict: Dict) -> Tuple[np.ndarray, np.ndarray]:
@@ -186,7 +212,7 @@ def _timeseries_trial_worker(args_dict: Dict) -> Tuple[np.ndarray, np.ndarray]:
         elif ptype == "carbon_tax":       
             policy = policy_carbon_tax(**policy_spec["params"])
 
-    X, I, _df = run_timeseries_trial(
+    X, I, _df, net_stats = run_timeseries_trial(
         T=T,
         scenario_kwargs=scenario_kwargs,
         seed=seed,
@@ -194,7 +220,7 @@ def _timeseries_trial_worker(args_dict: Dict) -> Tuple[np.ndarray, np.ndarray]:
         strategy_choice_func=strategy_choice_func,
         tau=tau,
     )
-    return X, I
+    return X, I, net_stats
 
 
 # -----------------------------
@@ -218,6 +244,8 @@ def collect_intervention_trials(
 
     baseline_args = []
     subsidy_args = []
+    network_stats = []
+    
     for i in range(n_trials):
         seed = seed_base + i
         baseline_args.append(
@@ -250,11 +278,12 @@ def collect_intervention_trials(
         baseline_futs = [ex.submit(_timeseries_trial_worker, args) for args in baseline_args]
         subsidy_futs = [ex.submit(_timeseries_trial_worker, args) for args in subsidy_args]
         for fut in as_completed(baseline_futs):
-            X, I = fut.result()
+            X, I, stats = fut.result()
             baseline_X.append(X)
             baseline_I.append(I)
+            network_stats.append(stats)
         for fut in as_completed(subsidy_futs):
-            X, I = fut.result()
+            X, I, _ = fut.result()
             subsidy_X.append(X)
             subsidy_I.append(I)
 
@@ -273,8 +302,9 @@ def collect_intervention_trials(
 
     baseline_df = summarize(baseline_X)
     subsidy_df = summarize(subsidy_X)
+    network_stats_df = pd.DataFrame(network_stats)
 
-    return baseline_X, baseline_I, subsidy_X, subsidy_I, baseline_df, subsidy_df
+    return baseline_X, baseline_I, subsidy_X, subsidy_I, baseline_df, subsidy_df, network_stats
 
 
 def traces_to_long_df(baseline_X: List[np.ndarray], subsidy_X: List[np.ndarray]) -> pd.DataFrame:
@@ -633,44 +663,44 @@ def main():
     subsidy_early = dict(start=0, delta_b=-0.3) 
     subsidy_late = dict(start=50, delta_b=-0.3) 
     scenarios = [
-        ("InitialAdoption0.3",
-            {**base_scenario, "X0_frac": 0.3},
+        # ("InitialAdoption0.3",
+        #     {**base_scenario, "X0_frac": 0.3},
+        #     subsidy_early),
+
+        # ("InitialAdoption0.5",
+        #     {**base_scenario, "X0_frac": 0.5},
+        #     subsidy_early),
+
+        # ("InitialInfrastructure0.15",
+        #     {**base_scenario, "I0": 0.15},
+        #     subsidy_early),
+
+        # ("InitialInfrastructure0.25",
+        #     {**base_scenario, "I0": 0.25},
+        #     subsidy_early),
+
+        # ("HighBetaI3.0",
+        #     {**base_scenario, "beta_I": 3.0},
+        #     subsidy_early),
+
+        # ("LowBetaI1.0",
+        #     {**base_scenario, "beta_I": 1.0},
+        #     subsidy_early),
+
+        ("ER_early",
+            {**base_scenario, "network_type": "random"},
             subsidy_early),
 
-        ("InitialAdoption0.5",
-            {**base_scenario, "X0_frac": 0.5},
-            subsidy_early),
-
-        ("InitialInfrastructure0.15",
-            {**base_scenario, "I0": 0.15},
-            subsidy_early),
-
-        ("InitialInfrastructure0.25",
-            {**base_scenario, "I0": 0.25},
-            subsidy_early),
-
-        ("HighBetaI3.0",
-            {**base_scenario, "beta_I": 3.0},
-            subsidy_early),
-
-        ("LowBetaI1.0",
-            {**base_scenario, "beta_I": 1.0},
-            subsidy_early),
-
-        ("BA_early",
-            {**base_scenario, "network_type": "BA"},
-            subsidy_early),
-
-        ("BA_late",
-            {**base_scenario, "network_type": "BA"},
+        ("ER_late",
+            {**base_scenario, "network_type": "random"},
             subsidy_late),
 
-        ("ER",
-            {**base_scenario, "network_type": "ER"},
+        ("BA",
+            {**base_scenario, "network_type": "BA"},
             subsidy_early),
 
         ("Grids",
-            {**base_scenario, "network_type": "Grids"},
+            {**base_scenario, "network_type": "grid"},
             subsidy_early),
     ]
 
@@ -678,7 +708,7 @@ def main():
         print(f"\n=== Running scenario: {label} ===")
 
         #Intervention trials + fanchart
-        baseline_X, baseline_I, subsidy_X, subsidy_I, baseline_df, subsidy_df = collect_intervention_trials(
+        baseline_X, baseline_I, subsidy_X, subsidy_I, baseline_df, subsidy_df, network_df = collect_intervention_trials(
             n_trials=n_trials,
             T=T,
             scenario_kwargs=scenario,
@@ -701,7 +731,8 @@ def main():
             subsidy_X=subsidy_X,
             subsidy_I=subsidy_I,
             baseline_df=baseline_df,
-            subsidy_df=subsidy_df
+            subsidy_df=subsidy_df,
+            network_df=network_df
         )
 
         # Build traces for spaghetti/density from the same trajectories
