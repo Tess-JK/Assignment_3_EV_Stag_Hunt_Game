@@ -661,7 +661,9 @@ def main():
     )
 
     subsidy_early = dict(start=0, delta_b=-0.3) 
-    subsidy_late = dict(start=50, delta_b=-0.3) 
+    subsidy_late = dict(start=50, delta_b=-0.3)
+    subsidy_strong = dict(start=0, delta_b=-0.4)
+    subsidy_weak = dict(start=0, delta_b=-0.2) 
     scenarios = [
         # ("InitialAdoption0.3",
         #     {**base_scenario, "X0_frac": 0.3},
@@ -687,21 +689,25 @@ def main():
         #     {**base_scenario, "beta_I": 1.0},
         #     subsidy_early),
 
-        ("ER_early",
-            {**base_scenario, "network_type": "random"},
-            subsidy_early),
-
-        ("ER_late",
-            {**base_scenario, "network_type": "random"},
-            subsidy_late),
-
-        ("BA",
+        ("BA_strong_b",
             {**base_scenario, "network_type": "BA"},
-            subsidy_early),
+            subsidy_strong),
 
-        ("Grids",
-            {**base_scenario, "network_type": "grid"},
-            subsidy_early),
+        ("BA_weak_b",
+            {**base_scenario, "network_type": "BA"},
+            subsidy_weak)
+
+        # ("ER_late",
+        #     {**base_scenario, "network_type": "random"},
+        #     subsidy_late),
+
+        # ("BA",
+        #     {**base_scenario, "network_type": "BA"},
+        #     subsidy_early),
+
+        # ("Grids",
+        #     {**base_scenario, "network_type": "grid"},
+        #     subsidy_early),
     ]
 
     for label, scenario, subsidy in scenarios:
