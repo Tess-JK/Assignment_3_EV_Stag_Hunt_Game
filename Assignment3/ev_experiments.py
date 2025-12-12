@@ -638,10 +638,10 @@ def save_scenario_data(label: str, name: str, **data):
 def main():
     # Defaults aligned with original ev_stag_mesa_model.run_intervention_example
     n_trials = 200  # use fewer than 500 for speed while keeping shape. Shortened
-    T = 200 # shortened
+    T = 70 # shortened
     strategy_choice_func = "imitate"
     tau = 1.0
-    max_workers = 4
+    max_workers = 8
     seed_base = 100
 
     base_scenario = dict(
@@ -661,7 +661,7 @@ def main():
     )
 
     subsidy_early = dict(start=0, delta_b=-0.3) 
-    subsidy_late = dict(start=50, delta_b=-0.3)
+    subsidy_late = dict(start=30, delta_b=-0.3)
     subsidy_strong = dict(start=0, delta_b=-0.4)
     subsidy_weak = dict(start=0, delta_b=-0.2) 
     scenarios = [
@@ -689,13 +689,13 @@ def main():
         #     {**base_scenario, "beta_I": 1.0},
         #     subsidy_early),
 
-        ("BA_strong_b",
-            {**base_scenario, "network_type": "BA"},
-            subsidy_strong),
+        # ("BA_strong_b",
+        #     {**base_scenario, "network_type": "BA"},
+        #     subsidy_strong),
 
-        ("BA_weak_b",
-            {**base_scenario, "network_type": "BA"},
-            subsidy_weak)
+        # ("BA_weak_b",
+        #     {**base_scenario, "network_type": "BA"},
+        #     subsidy_weak)
 
         # ("ER",
         #     {**base_scenario, "network_type": "random"},
@@ -704,7 +704,9 @@ def main():
         # ("BA",
         #     {**base_scenario, "network_type": "BA"},
         #     subsidy_early),
-
+        ("BA_late",
+            {**base_scenario, "network_type": "BA"},
+            subsidy_late),
         # ("Grids",
         #     {**base_scenario, "network_type": "grid"},
         #     subsidy_early),
@@ -759,7 +761,7 @@ def main():
             X0_values=np.linspace(0.0, 1.0, 21),
             ratio_values=np.linspace(0.8, 3.5, 31),
             batch_size=8,
-            T=200,
+            T=T,
             strategy_choice_func=strategy_choice_func,
             tau=tau,
             scenario_kwargs=scenario
@@ -772,7 +774,7 @@ def main():
             X0_frac=scenario.get("X0_frac", 0.40),
             ratio_values=np.linspace(0.8, 3.5, 31),
             scenario_kwargs=scenario,
-            T=200,
+            T=T,
             batch_size=8,
             strategy_choice_func=strategy_choice_func,
             tau=tau
