@@ -611,16 +611,16 @@ def run_intervention_example(
 
 def save_scenario_data(label: str, name: str, **data):
     """
-    Save arbitrary keyword-argument data to a pickle file inside plots_{label}/.
+    Save arbitrary keyword-argument data to a pickle file inside data/data_{label}/.
 
     Example:
         save_scenario_data("InitialAdoption0.3", "intervention",
                            baseline_X=..., subsidy_X=..., baseline_df=...)
 
     Produces:
-        plots_InitialAdoption0.3/intervention_data.pkl
+        data_InitialAdoption0.3/intervention_data.pkl
     """
-    folder = f"data_{label}"
+    folder = f"data/data_{label}"
     os.makedirs(folder, exist_ok=True)
 
     path = os.path.join(folder, f"{name}_data.pkl")
