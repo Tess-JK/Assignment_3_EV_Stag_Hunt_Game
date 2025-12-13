@@ -697,16 +697,16 @@ def main():
         #     {**base_scenario, "network_type": "BA"},
         #     subsidy_weak)
 
-        # ("ER",
-        #     {**base_scenario, "network_type": "random"},
-        #     subsidy_early),
+        ("ER",
+            {**base_scenario, "network_type": "random"},
+            subsidy_early),
 
         # ("BA",
         #     {**base_scenario, "network_type": "BA"},
         #     subsidy_early),
-        ("BA_late",
-            {**base_scenario, "network_type": "BA"},
-            subsidy_late),
+        # ("BA_late",
+        #     {**base_scenario, "network_type": "BA"},
+        #     subsidy_late),
         # ("Grids",
         #     {**base_scenario, "network_type": "grid"},
         #     subsidy_early),
